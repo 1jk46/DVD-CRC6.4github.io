@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DVD CRC64 Hash Lookup</title>
+    <!-- IMPORTANT: Link your saved library data (tv.js) FIRST here -->
+    <!-- This script tag will load your library data if you've uploaded tv.js to NeoCities -->
+    <script src="tv.js"></script>
+
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        input[type="text"] {
+            border: 1px solid #cbd5e0;
+            padding: 12px;
+            border-radius: 8px;
+            width: calc(100% - 24px); /* Account for padding */
+            margin-bottom: 20px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+        }
+        button {
+            background-color: #3b82f6;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            border: none;
+            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+            margin-top: 10px; /* Added margin for spacing */
+        }
+        button:hover {
+            background-color: #2563eb;
+            transform: translateY(-2px);
+        }
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(59, 130, 246, 0.3);
+        }
+        #results {
+            margin-top: 25px;
+            padding: 20px;
+            background-color: #e0f2fe;
+            border-radius: 8px;
+            border: 1px solid #bfdbfe;
+            color: #1e40af;
+            font-size: 15px;
+            line-height: 1.6;
+            text-align: left;
+        }
+        .explanation {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #6b7280;
+            text-align: left;
+        }
+        .disclaimer {
+            margin-top: 20px;
+            font-size: 13px;
+            color: #9ca3af;
+            text-align: center;
+        }
+        .section-title {
+            font-size: 1.5rem; /* Equivalent to text-2xl */
+            font-weight: 600; /* Equivalent to font-semibold */
+            color: #374151; /* Equivalent to text-gray-700 */
+            margin-top: 30px;
+            margin-bottom: 20px;
+        }
+        .movie-details {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .movie-details img {
+            max-width: 100px;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .movie-info {
+            flex-grow: 1;
+        }
+        .movie-info p {
+            margin-bottom: 5px;
+        }
+        .movie-info .detail-label {
+            font-weight: 600;
+            color: #374151;
+        }
+        input[type="file"] {
+            margin-top: 10px;
+            margin-bottom: 10px;
+            padding: 8px;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            width: calc(100% - 16px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">DVD CRC64 Hash Lookup</h1>
+
+        <p class="text-gray-600 mb-6">
+            This tool explores the idea of identifying media using DVD CRC64 hashes. You can submit hashes with their titles to a temporary "library" and then try to look them up!
+        </p>
+
+        <!-- Section for Submitting Hash & Title with Search -->
+        <div class="section-title">Add to Library by Searching (Powered by OMDb)</div>
+        <div class="mb-4">
+            <label for="submitCrc64Hash" class="block text-gray-700 text-sm font-medium mb-2 text-left">CRC64 Hash:</label>
+            <input type="text" id="submitCrc64Hash" placeholder="e.g., A1B2C3D4E5F67890" class="focus:ring-blue-500 focus:border-blue-500 block w-full rounded-md sm:text-sm">
+        </div>
+        <div class="mb-4">
+            <label for="searchQuery" class="block text-gray-700 text-sm font-medium mb-2 text-left">Search for Movie/TV Show Title (start typing for suggestions):</label>
+            <!-- Datalist for search suggestions -->
+            <input type="text" id="searchQuery" list="movieSuggestions" placeholder="e.g., Inception" class="focus:ring-blue-500 focus:border-blue-500 block w-full rounded-md sm:text-sm">
+            <datalist id="movieSuggestions">
+                <!-- Options will be populated by JavaScript -->
+            </datalist>
+        </div>
+        <button id="addLibraryButton">
+            Search & Add to Library
+        </button>
+
+        <hr class="my-8 border-gray-300"> <!-- Separator -->
+
+        <!-- Section for Looking Up Hash -->
+        <div class="section-title">Look Up a Hash</div>
+        <div class="mb-4">
+            <label for="lookupCrc64Hash" class="block text-gray-700 text-sm font-medium mb-2 text-left">CRC64 Hash to Look Up:</label>
+            <input type="text" id="lookupCrc64Hash" placeholder="e.g., A1B2C3D4E5F67890" class="focus:ring-blue-500 focus:border-blue-500 block w-full rounded-md sm:text-sm">
+        </div>
+        <button id="lookupHashButton">
+            Find Media
+        </button>
+
+        <div id="results" class="hidden">
+            <p class="font-semibold mb-2">Lookup Status:</p>
+            <p id="statusMessage">Processing...</p>
+        </div>
+
+        <div class="explanation">
+            <p class="font-semibold text-gray-700 mb-2">Important things to know about CRC64 hashes:</p>
+            <ul class="list-disc list-inside text-gray-600">
+                <li>CRC64 is mainly a "data check" code, not a unique ID for a movie or TV show.</li>
+                <li>Different versions of the same movie (like a special edition or a different region's DVD) will likely have different CRC64 hashes.</li>
+                <li>This "library" is just for fun and stored in your browser. A real one would need a huge, complex online system!</li>
+                <li>For finding movies/shows, it's usually best to use their titles or IDs from big movie websites like IMDb.</li>
+            </ul>
+        </div>
+
+        <div class="disclaimer">
+            <p>This tool is a fun way to explore the idea of a community-built hash library. It's a conceptual demonstration, not a real, persistent database.</p>
+            <p class="mt-2">The OMDb API calls use a CORS proxy to function on static sites like NeoCities.org.</p>
+        </div>
+    </div>
+
+    <script>
+        // Your OMDb API Key
+        const omdbApiKey = "907b3650";
+        // Base URL for OMDb API. We'll use a CORS proxy to avoid cross-origin issues.
+        const omdbApiBaseUrl = "http://www.omdbapi.com/";
+        const corsProxyUrl = "https://corsproxy.io/?"; // CORS proxy to bypass cross-origin restrictions
+
+        // This array will act as our temporary "library" in your browser's memory.
+        // It's initialized as 'let' so it can be overwritten when loading from a file.
+        // The 'initialDVDLibraryData' variable is EXPECTED to be defined by an external 'tv.js' file.
+        let localDatabase = [];
+
+        // Debounce timer for API calls
+        let searchTimer;
+
+        /**
+         * Validates a CRC64 hash format.
+         * @param {string} hash - The hash string to validate.
+         * @returns {boolean} True if valid, false otherwise.
+         */
+        function isValidCrc64(hash) {
+            return /^[0-9A-Fa-f]{16}$/.test(hash);
+        }
+
+        /**
+         * Displays a message in the results area.
+         * @param {string} message - The HTML message to display.
+         * @param {string} type - 'success', 'error', or 'info' for styling.
+         */
+        function displayMessage(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const statusMessage = document.getElementById('statusMessage');
+
+            // Ensure elements exist before trying to access their properties
+            if (!resultsDiv || !statusMessage) {
+                console.error("DOM elements #results or #statusMessage not found. Cannot display message.");
+                return; // Exit if elements are not found
+            }
+
+            resultsDiv.classList.remove('hidden');
+
+            let bgColor = '#e0f2fe'; // info
+            let borderColor = '#bfdbfe'; // info
+            let textColor = '#1e40af'; // info
+
+            if (type === 'success') {
+                bgColor = '#d1fae5';
+                borderColor = '#a7f3d0';
+                textColor = '#065f46';
+            } else if (type === 'error') {
+                bgColor = '#fee2e2';
+                borderColor = '#fecaca';
+                textColor = '#991b1b';
+            }
+
+            resultsDiv.style.backgroundColor = bgColor;
+            resultsDiv.style.borderColor = borderColor;
+            statusMessage.style.color = textColor;
+            statusMessage.innerHTML = message;
+        }
+
+        /**
+         * Fetches movie/TV show suggestions from OMDb API based on search query.
+         * Populates the datalist with these suggestions.
+         */
+        async function fetchMovieSuggestions() {
+            clearTimeout(searchTimer); // Clear previous timer
+            const searchQueryInput = document.getElementById('searchQuery');
+            const datalist = document.getElementById('movieSuggestions');
+            const query = searchQueryInput.value.trim();
+
+            if (query.length < 3) { // Only search if query is at least 3 characters long
+                datalist.innerHTML = ''; // Clear suggestions
+                return;
+            }
+
+            // Debounce API call to prevent too many requests
+            searchTimer = setTimeout(async () => {
+                try {
+                    // Construct OMDb API URL for search by title (s=)
+                    // The OMDb URL is encoded and then prefixed with the CORS proxy URL
+                    const url = `${corsProxyUrl}${encodeURIComponent(`${omdbApiBaseUrl}?s=${encodeURIComponent(query)}&apikey=${omdbApiKey}`)}`;
+                    const response = await fetch(url);
+                    const data = await response.json();
+
+                    datalist.innerHTML = ''; // Clear existing options
+
+                    if (data.Response === "True" && data.Search) {
+                        data.Search.forEach(item => {
+                            // Only add if it's a movie or series and has a title
+                            if ((item.Type === 'movie' || item.Type === 'series') && item.Title) {
+                                const option = document.createElement('option');
+                                // Store IMDb ID in a data attribute for later retrieval
+                                option.value = `${item.Title} (${item.Year || 'N/A'})`;
+                                option.dataset.imdbId = item.imdbID; // Store IMDb ID
+                                datalist.appendChild(option);
+                            }
+                        });
+                    } else {
+                        // console.log("No suggestions found for:", query);
+                    }
+                } catch (error) {
+                    console.error("Error fetching suggestions from OMDb:", error);
+                    // Optionally, display an error message to the user
+                    // displayMessage('Error fetching suggestions. Please try again later.', 'error');
+                }
+            }, 500); // Wait 500ms after last keypress
+        }
+
+
+        /**
+         * Function to search for a title on OMDb, fetch its details, and then add the hash and full details to the local "library".
+         */
+        async function searchAndAddToLibrary() {
+            const hashInput = document.getElementById('submitCrc64Hash');
+            const searchQueryInput = document.getElementById('searchQuery');
+            const hash = hashInput.value.trim().toUpperCase(); // Convert to uppercase for consistency
+            const selectedTitleWithYear = searchQueryInput.value.trim(); // Get the value from the input field
+
+            if (hash === '' || selectedTitleWithYear === '') {
+                displayMessage('<span class="font-semibold">Please enter both a CRC64 hash and select/type a movie/TV show title.</span>', 'error');
+                return;
+            }
+
+            if (!isValidCrc64(hash)) {
+                displayMessage('<span class="font-semibold">Invalid CRC64 hash format. Please enter 16 hexadecimal characters.</span>', 'error');
+                return;
+            }
+
+            displayMessage(`Fetching details for "${selectedTitleWithYear}" from OMDb and preparing to add hash: <span class="font-mono">${hash}</span>...`, 'info');
+
+            try {
+                // Find the IMDb ID from the datalist options if a suggestion was selected
+                let imdbID = null;
+                const options = document.getElementById('movieSuggestions').options;
+                for (let i = 0; i < options.length; i++) {
+                    if (options[i].value === selectedTitleWithYear) {
+                        imdbID = options[i].dataset.imdbId;
+                        break;
+                    }
+                }
+
+                if (!imdbID) {
+                    // If no IMDb ID found from datalist, try to search OMDb by title directly
+                    // This handles cases where user types a title without selecting from dropdown
+                    const searchUrl = `${corsProxyUrl}${encodeURIComponent(`${omdbApiBaseUrl}?s=${encodeURIComponent(selectedTitleWithYear)}&apikey=${omdbApiKey}`)}`;
+                    const searchResponse = await fetch(searchUrl);
+                    const searchData = await searchResponse.json();
+
+                    if (searchData.Response === "True" && searchData.Search && searchData.Search.length > 0) {
+                        imdbID = searchData.Search[0].imdbID;
+                    } else {
+                        displayMessage(`
+                            <p><span class="font-semibold">Could not find detailed information for "${selectedTitleWithYear}" on OMDb.</span></p>
+                            <p class="mt-2">
+                                Please ensure you select a suggestion from the dropdown or type an exact title.
+                            </p>
+                        `, 'error');
+                        return;
+                    }
+                }
+
+                // Now fetch full details using the IMDb ID
+                const detailsUrl = `${corsProxyUrl}${encodeURIComponent(`${omdbApiBaseUrl}?i=${encodeURIComponent(imdbID)}&apikey=${omdbApiKey}`)}`;
+                const detailsResponse = await fetch(detailsUrl);
+                const detailsData = await detailsResponse.json();
+
+                if (detailsData.Response === "True") {
+                    const movieDetails = {
+                        hash: hash,
+                        title: detailsData.Title,
+                        year: detailsData.Year,
+                        genre: detailsData.Genre,
+                        plot: detailsData.Plot,
+                        director: detailsData.Director,
+                        poster: detailsData.Poster && detailsData.Poster !== 'N/A' ? detailsData.Poster : 'https://placehold.co/100x150/cccccc/333333?text=No+Poster' // Placeholder for no poster
+                    };
+
+                    // Check if the hash already exists in our local database
+                    const existingEntryIndex = localDatabase.findIndex(entry => entry.hash === hash);
+                    if (existingEntryIndex !== -1) {
+                        // If hash exists, update the details
+                        localDatabase[existingEntryIndex] = movieDetails;
+                        displayMessage(`Updated entry for hash: <span class="font-mono">${hash}</span> with details for: <span class="font-semibold">"${movieDetails.title}"</span>.`, 'info');
+                    } else {
+                        // Add new entry
+                        localDatabase.push(movieDetails);
+                        displayMessage(`Successfully added hash: <span class="font-mono">${hash}</span> with details for: <span class="font-semibold">"${movieDetails.title}"</span> to the library!`, 'success');
+                    }
+                    displayMovieDetails(movieDetails, 'success'); // Show the full details
+                } else {
+                    displayMessage(`
+                        <p><span class="font-semibold">Failed to retrieve full details for "${selectedTitleWithYear}" from OMDb.</span></p>
+                        <p class="mt-2">
+                            OMDb message: ${detailsData.Error || 'Unknown error.'}
+                        </p>
+                    `, 'error');
+                }
+            } catch (error) {
+                console.error("Error fetching movie details from OMDb API:", error);
+                displayMessage('An error occurred while fetching movie details. Please check your internet connection or try again later.', 'error');
+            }
+
+            // Clear input fields after submission
+            hashInput.value = '';
+            searchQueryInput.value = '';
+        }
+
+        /**
+         * Displays the full movie/TV show details in the results area.
+         * @param {object} details - The movie/TV show details object.
+         * @param {string} type - 'success', 'error', or 'info' for styling.
+         */
+        function displayMovieDetails(details, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            // Ensure resultsDiv exists before trying to access its properties
+            if (!resultsDiv) {
+                console.error("DOM element #results not found. Cannot display movie details.");
+                return;
+            }
+
+            resultsDiv.classList.remove('hidden');
+
+            let bgColor = '#e0f2fe'; // info
+            let borderColor = '#bfdbfe'; // info
+            let textColor = '#1e40af'; // info
+
+            if (type === 'success') {
+                bgColor = '#d1fae5';
+                borderColor = '#a7f3d0';
+                textColor = '#065f46';
+            } else if (type === 'error') {
+                bgColor = '#fee2e2';
+                borderColor = '#fecaca';
+                textColor = '#991b1b';
+            }
+
+            resultsDiv.style.backgroundColor = bgColor;
+            resultsDiv.style.borderColor = borderColor;
+            resultsDiv.style.color = textColor; // Apply text color to the whole div
+
+            resultsDiv.innerHTML = `
+                <p class="font-semibold mb-2">Details for CRC64 Hash: <span class="font-mono text-blue-800">${details.hash}</span></p>
+                <div class="movie-details">
+                    <img src="${details.poster}" alt="Poster for ${details.title}" onerror="this.onerror=null;this.src='https://placehold.co/100x150/cccccc/333333?text=No+Poster';" class="rounded-md shadow-md">
+                    <div class="movie-info">
+                        <p><span class="detail-label">Title:</span> <span class="font-bold">${details.title} (${details.year})</span></p>
+                        <p><span class="detail-label">Genre:</span> ${details.genre}</p>
+                        <p><span class="detail-label">Director:</span> ${details.director}</p>
+                        <p><span class="detail-label">Plot:</span> ${details.plot}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+
+        /**
+         * Function to look up a hash in the local "library" or explain limitations.
+         */
+        function lookupHash() {
+            const hashInput = document.getElementById('lookupCrc64Hash');
+            const hash = hashInput.value.trim().toUpperCase(); // Convert to uppercase for consistency
+
+            if (hash === '') {
+                displayMessage('<span class="font-semibold">Please enter a CRC64 hash to look up.</span>', 'error');
+                return;
+            }
+
+            if (!isValidCrc64(hash)) {
+                displayMessage('<span class="font-semibold">Invalid CRC64 hash format. Please enter 16 hexadecimal characters.</span>', 'error');
+                return;
+            }
+
+            displayMessage(`Searching for media with CRC64 hash: <span class="font-mono text-blue-800">${hash}</span>...`, 'info');
+
+            // Simulate a short delay for lookup
+            setTimeout(() => {
+                const foundEntry = localDatabase.find(entry => entry.hash === hash);
+
+                if (foundEntry) {
+                    displayMovieDetails(foundEntry, 'success'); // Display full details if found
+                } else {
+                    displayMessage(`
+                        <p>No match found for CRC64 hash: <span class="font-mono text-blue-800">${hash}</span> in your current session's library.</p>
+                        <p class="mt-2">
+                            Remember, CRC64 hashes are not typically used for direct media identification in public databases.
+                            This tool shows how a local "library" could work, but a real-world solution would need a big online system.
+                        </p>
+                    `, 'info');
+                }
+            }, 1000); // Simulate a 1-second delay
+        }
+
+        // Attach event listeners and perform initial library load after the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Populate localDatabase with initial data if available from tv.js
+            // This check ensures that if tv.js is loaded BEFORE this script, its data is used.
+            // This block was moved here to ensure displayMessage is called after DOM is ready.
+            if (typeof initialDVDLibraryData !== 'undefined' && Array.isArray(initialDVDLibraryData)) {
+                localDatabase = [...initialDVDLibraryData]; // Populate with initial data
+                // Use a small timeout to ensure displayMessage runs after the DOM is fully painted
+                setTimeout(() => {
+                    displayMessage('Library initialized with data from tv.js.', 'info');
+                }, 0);
+            }
+
+            // Get button references
+            const addLibraryButton = document.getElementById('addLibraryButton');
+            const lookupHashButton = document.getElementById('lookupHashButton');
+            const searchQueryInput = document.getElementById('searchQuery');
+
+            // Attach event listeners
+            if (addLibraryButton) {
+                addLibraryButton.addEventListener('click', searchAndAddToLibrary);
+            }
+            if (lookupHashButton) {
+                lookupHashButton.addEventListener('click', lookupHash);
+            }
+            searchQueryInput.addEventListener('input', fetchMovieSuggestions);
+        });
+    </script>
+</body>
+</html>
